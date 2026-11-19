@@ -1,0 +1,57 @@
+import sqlite3
+
+class DataBase():
+    def __init__(self):
+        self.linker = sqlite3.connect("data.db")
+        
+        self.linker.execute("""
+            CREATE TABLE IF NOT EXISTS replies (
+                chat_id INTEGER NOT NULL, 
+                i INTEGER NOT NULL, 
+                j INTEGER NOT NULL,
+                n INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (chat_id, i, j)
+            )
+        """)
+
+        self.linker.execute("""
+            CREATE TABLE IF NOT EXISTS active_chats (
+                chat_id INTEGER PRIMARY KEY
+            )
+        """)
+
+        self.linker.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                chat_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                first_name TEXT,
+                username TEXT,
+                PRIMARY KEY (chat_id, user_id)
+            )
+        """)
+
+    def add_reply(self, chat, i, j):
+        self.linker.execute("""
+            INSERT INTO replies (chat_id, i, j, n) VALUES (?, ?, ?, 1)
+            ON CONFLICT(chat_id, i, j) DO UPDATE SET n = n + 1
+        """, (chat, i, j))
+        self.linker.commit()
+
+    def add_user(self, chat, user_id, first_name, username):
+        self.linker.execute("""
+            INSERT INTO users (chat_id, user_id, first_name, username) VALUES (?, ?, ?, ?)
+            ON CONFLICT(chat_id, user_id) DO UPDATE SET first_name = excluded.first_name, username = excluded.username
+        """, (chat, user_id, first_name, username))
+        self.linker.commit()
+
+    def active_chat(self, chat):
+        self.linker.execute("INSERT OR IGNORE INTO active_chats (chat_id) VALUES (?)", (chat,))
+        self.linker.commit()
+
+    def join_chat(self, chat):
+        return self.linker.execute("SELECT chat_id FROM active_chats WHERE chat_id = ?", (chat,)).fetchone()
+        
+    def debug(self):
+        print(self.linker.execute("SELECT * FROM replies").fetchall())
+        print(self.linker.execute("SELECT * FROM users").fetchall())
+
