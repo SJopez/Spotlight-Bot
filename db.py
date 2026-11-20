@@ -2,7 +2,7 @@ import sqlite3
 
 class DataBase():
     def __init__(self):
-        self.linker = sqlite3.connect("data.db")
+        self.linker = sqlite3.connect(":memory:")
         
         self.linker.execute("""
             CREATE TABLE IF NOT EXISTS replies (
@@ -48,9 +48,23 @@ class DataBase():
         self.linker.execute("INSERT OR IGNORE INTO active_chats (chat_id) VALUES (?)", (chat,))
         self.linker.commit()
 
+    def count_users(self, chat):
+        return self.linker.execute("SELECT COUNT(*) FROM users WHERE chat_id = ?", (chat,)).fetchone()[0]
+
     def join_chat(self, chat):
         return self.linker.execute("SELECT chat_id FROM active_chats WHERE chat_id = ?", (chat,)).fetchone()
-        
+
+    def get_replies(self, chat):
+        return self.linker.execute(
+            "SELECT * FROM replies WHERE chat_id = ? ORDER BY n DESC", (chat,)
+        ).fetchall()
+
+    def get_names(self, chat):
+        rows = self.linker.execute(
+            "SELECT user_id, first_name, username FROM users WHERE chat_id = ?", (chat,)
+        ).fetchall()
+        return {user_id: (username or first_name) for user_id, first_name, username in rows}
+
     def debug(self):
         print(self.linker.execute("SELECT * FROM replies").fetchall())
         print(self.linker.execute("SELECT * FROM users").fetchall())
