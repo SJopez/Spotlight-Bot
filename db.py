@@ -65,6 +65,35 @@ class DataBase():
         ).fetchall()
         return {user_id: (username or first_name) for user_id, first_name, username in rows}
 
+    def add_replies(self, chat, counts):
+        self.linker.executemany("""
+            INSERT INTO replies (chat_id, i, j, n) VALUES (?, ?, ?, ?)
+            ON CONFLICT(chat_id, i, j) DO UPDATE SET n = n + excluded.n
+        """, [(chat, i, j, n) for (i, j), n in counts.items()])
+        self.linker.commit()
+
+    def add_users_if_missing(self, chat, names):
+        self.linker.executemany(
+            "INSERT OR IGNORE INTO users (chat_id, user_id, first_name, username) VALUES (?, ?, ?, NULL)",
+            [(chat, user_id, name) for user_id, name in names.items()]
+        )
+        self.linker.commit()
+
+    def get_user_ids(self, chat):
+        rows = self.linker.execute("SELECT user_id FROM users WHERE chat_id = ?", (chat,)).fetchall()
+        return [row[0] for row in rows]
+
+    def remove_users(self, chat, ids):
+        self.linker.executemany(
+            "DELETE FROM replies WHERE chat_id = ? AND (i = ? OR j = ?)",
+            [(chat, user_id, user_id) for user_id in ids]
+        )
+        self.linker.executemany(
+            "DELETE FROM users WHERE chat_id = ? AND user_id = ?",
+            [(chat, user_id) for user_id in ids]
+        )
+        self.linker.commit()
+
     def debug(self):
         print(self.linker.execute("SELECT * FROM replies").fetchall())
         print(self.linker.execute("SELECT * FROM users").fetchall())

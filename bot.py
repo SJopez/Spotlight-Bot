@@ -5,8 +5,17 @@ import pyrogram.filters as fl
 from db import DataBase
 from svd import get_list, get_scores
 from pyrogram.enums import ParseMode
+import asyncio
+import json
+from importer import parse_export
 
-app = Client("my_account", os.environ["API_ID"], os.environ["API_HASH"])
+app = Client(
+    "spotlight",
+    api_id=int(os.environ["API_ID"]),
+    api_hash=os.environ["API_HASH"],
+    bot_token=os.environ["BOT_TOKEN"],
+)
+
 database = DataBase()
 MEDALS = ["🥇", "🥈", "🥉"]
 
@@ -49,7 +58,6 @@ async def import_history(cli: Client, msg: Message):
     await msg.reply("Importing, this may take a while...")
     path = await source.download()
     
-    """
     try:
         counts, names = await asyncio.to_thread(parse_export, path)
     except (json.JSONDecodeError, KeyError):
@@ -61,12 +69,22 @@ async def import_history(cli: Client, msg: Message):
     database.add_users_if_missing(msg.chat.id, names)
     database.add_replies(msg.chat.id, counts)
     await msg.reply(f"Imported {sum(counts.values())} replies from {len(names)} users")
-    """
+    
 
 @app.on_message(filters = fl.group & fl.command("listen"))
 async def start(cli: Client, msg: Message):
     database.active_chat(msg.chat.id)
     await msg.reply("Spotlight is listening to feed the matrix...")
+
+async def find_bots(cli: Client, ids):
+    bots = []
+    for start in range(0, len(ids), 100):
+        try:
+            users = await cli.get_users(ids[start:start + 100])
+        except Exception:
+            continue
+        bots.extend(user.id for user in users if user.is_bot)
+    return bots
 
 @app.on_message(filters = fl.group & fl.command("protas"))
 async def get_rank(cli: Client, msg: Message):
@@ -74,10 +92,15 @@ async def get_rank(cli: Client, msg: Message):
         await msg.reply("Run the command /listen first")
         return
 
+    bots = await find_bots(cli, database.get_user_ids(msg.chat.id))
+    
+    if bots:
+        database.remove_users(msg.chat.id, bots)
+
     if database.count_users(msg.chat.id) == 0:
         await msg.reply("Not enough replies yet to build a ranking")
         return
-
+    
     top = 10
     scores = get_scores(get_list(database, msg.chat.id))
     names = database.get_names(msg.chat.id)

@@ -30,15 +30,15 @@ def build_matrix(count, replies):
     return matrix, taken
 
 def get_scores(ranking):
-    best = max(authority for _, authority, _ in ranking)
-    return [(user_id, authority / best * 100) for user_id, authority, _ in ranking]
+    total = sum(authority for _, authority, _ in ranking)
+    return [(user_id, authority / total * 100) for user_id, authority, _ in ranking]
 
 def get_list(database: DataBase, chat):
     count = database.count_users(chat)
     replies = database.get_replies(chat)
 
     matrix, taken = build_matrix(count, replies)
-    matrix = np.array(matrix, dtype=float)
+    matrix = np.array(matrix, dtype=float) ** 0.5
     U, S, Vt = np.linalg.svd(matrix)
 
     hub = U[:, 0]
@@ -48,7 +48,7 @@ def get_list(database: DataBase, chat):
         authority = -authority
     if hub.sum() < 0:
         hub = -hub
-
+    
     ranking = [(user_id, authority[idx], hub[idx]) for user_id, idx in taken.items()]
     ranking.sort(key=lambda x: x[1], reverse=True)
 
