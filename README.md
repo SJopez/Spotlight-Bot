@@ -80,7 +80,6 @@ Since the bot cannot read a group's past, there is `/importar`: export the chat 
 | `/protas` | Show the ranking of main characters. |
 | `/importar` | Reply to a `result.json` with it to load past history. |
 | `/restart` | Restart the bot (group admins only). |
-| `/start`, `/help` | In private: explanation and a button to add the bot to a group. |
 
 ## Installation
 
