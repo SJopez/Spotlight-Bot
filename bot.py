@@ -8,6 +8,9 @@ from pyrogram.enums import ParseMode
 import asyncio
 import json
 from importer import parse_export
+import sys
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.enums import ChatMemberStatus
 
 app = Client(
     "spotlight",
@@ -34,6 +37,16 @@ WELCOME = (
     "I never save the content of any message.\n\n"
 )
 
+@app.on_message(filters = fl.command(["help"]))
+async def welcome_private(cli: Client, msg: Message):
+    me = await cli.get_me()
+    button = InlineKeyboardButton(
+        "➕ Add me to a group",
+        url=f"https://t.me/{me.username}?startgroup=true"
+    )
+    await msg.reply(WELCOME, parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup([[button]]))
+
+
 @app.on_message(filters = fl.private & fl.command(["start", "help"]))
 async def welcome_private(cli: Client, msg: Message):
     await msg.reply(WELCOME, parse_mode=ParseMode.HTML)
@@ -42,6 +55,20 @@ async def welcome_private(cli: Client, msg: Message):
 async def welcome_group(cli: Client, msg: Message):
     if any(user.is_self for user in msg.new_chat_members):
         await msg.reply(WELCOME, parse_mode=ParseMode.HTML)
+
+@app.on_message(filters = fl.group & fl.command("restart"))
+async def restart(cli: Client, msg: Message):
+    if msg.from_user is None:
+        return
+
+    member = await cli.get_chat_member(msg.chat.id, msg.from_user.id)
+    if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER):
+        await msg.reply("Only admins can restart the bot")
+        return
+
+    await msg.reply("Restarting...")
+    await cli.stop()
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 @app.on_message(filters = fl.group & fl.command("import"))
 async def import_history(cli: Client, msg: Message):
@@ -52,12 +79,19 @@ async def import_history(cli: Client, msg: Message):
     source = msg.reply_to_message
     doc = source.document if source else None
     if doc is None or not (doc.file_name or "").endswith(".json"):
-        await msg.reply("Reply to the exported result.json file with /importar")
+        await msg.reply("Reply to the exported result.json file with /import")
         return
 
     await msg.reply("Importing, this may take a while...")
-    path = await source.download()
-    
+    try:
+        path = await source.download()
+    except TimeoutError:
+        path = None
+
+    if path is None:
+        await msg.reply("The download failed, try again in a moment")
+        return
+
     try:
         counts, names = await asyncio.to_thread(parse_export, path)
     except (json.JSONDecodeError, KeyError):
@@ -70,7 +104,6 @@ async def import_history(cli: Client, msg: Message):
     database.add_replies(msg.chat.id, counts)
     await msg.reply(f"Imported {sum(counts.values())} replies from {len(names)} users")
     
-
 @app.on_message(filters = fl.group & fl.command("listen"))
 async def start(cli: Client, msg: Message):
     database.active_chat(msg.chat.id)
@@ -135,6 +168,5 @@ async def reply_listener(cli: Client, msg: Message):
     database.add_reply(msg.chat.id, user.id, replied.id)
     database.add_user(msg.chat.id, user.id, user.first_name, user.username)
     database.add_user(msg.chat.id, replied.id, replied.first_name, replied.username)
-    #database.debug()
 
 app.run()

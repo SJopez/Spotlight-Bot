@@ -93,8 +93,3 @@ class DataBase():
             [(chat, user_id) for user_id in ids]
         )
         self.linker.commit()
-
-    def debug(self):
-        print(self.linker.execute("SELECT * FROM replies").fetchall())
-        print(self.linker.execute("SELECT * FROM users").fetchall())
-
