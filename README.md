@@ -90,19 +90,10 @@ cd <folder>
 pip install -r requirements.txt
 ```
 
-`requirements.txt`:
-
-```
-pyrogram
-tgcrypto
-numpy
-python-dotenv
-```
-
 Create a `.env` file in the project root:
 
 ```
-API_ID=123456
+API_ID=your_api_id
 API_HASH=your_api_hash
 BOT_TOKEN=your_botfather_token
 ```
@@ -122,7 +113,6 @@ bot.py        Telegram handlers and message formatting
 db.py         DataBase class: SQLite tables and queries
 svd.py        matrix construction, SVD and scores
 importer.py   reader for the exported result.json
-assets/       bot image
 ```
 
 ## Status
