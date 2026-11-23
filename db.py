@@ -93,3 +93,8 @@ class DataBase():
             [(chat, user_id) for user_id in ids]
         )
         self.linker.commit()
+
+    def clean(self, chat):
+        self.linker.execute("DELETE FROM replies WHERE chat_id = ?", (chat,))
+        self.linker.execute("DELETE FROM users WHERE chat_id = ?", (chat,))
+        self.linker.commit()    

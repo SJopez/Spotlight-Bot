@@ -100,7 +100,7 @@ BOT_TOKEN=your_botfather_token
 `API_ID` and `API_HASH` come from [my.telegram.org](https://my.telegram.org) and the token from [@BotFather](https://t.me/BotFather). Then, in BotFather, disable the bot's *privacy mode* (`/setprivacy` → `Disable`) and add the bot to the group again. To run it:
 
 ```bash
-python bot.py
+python app.py
 ```
 
 `.env`, `*.session` and `*.db` are in `.gitignore`: never commit them.
@@ -108,7 +108,7 @@ python bot.py
 ## Project structure
 
 ```
-bot.py        Telegram handlers and message formatting
+app.py        Telegram handlers and message formatting
 db.py         DataBase class: SQLite tables and queries
 svd.py        matrix construction, SVD and scores
 importer.py   reader for the exported result.json

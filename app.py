@@ -56,23 +56,19 @@ async def welcome_group(cli: Client, msg: Message):
     if any(user.is_self for user in msg.new_chat_members):
         await msg.reply(WELCOME, parse_mode=ParseMode.HTML)
 
-@app.on_message(filters = fl.group & fl.command("restart"))
+@app.on_message(filters = fl.command("restart"))
 async def restart(cli: Client, msg: Message):
     if msg.from_user is None:
         return
 
-    member = await cli.get_chat_member(msg.chat.id, msg.from_user.id)
-    if member.status not in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER):
-        await msg.reply("Only admins can restart the bot")
-        return
-
     await msg.reply("Restarting...")
-    await cli.stop()
-    os.execv(sys.executable, [sys.executable] + sys.argv)
-
-@app.on_message(filters = fl.group & fl.command("import"))
+    database.clean(msg.chat.id)
+    
+@app.on_message(filters = fl.command("import"))
 async def import_history(cli: Client, msg: Message):
-    if database.join_chat(msg.chat.id) is None:
+    chat = msg.chat.id
+
+    if database.join_chat(chat) is None:
         await msg.reply("Run the command /listen first")
         return
 
@@ -100,11 +96,12 @@ async def import_history(cli: Client, msg: Message):
     finally:
         os.remove(path)
 
-    database.add_users_if_missing(msg.chat.id, names)
-    database.add_replies(msg.chat.id, counts)
+    database.clean(chat)
+    database.add_users_if_missing(chat, names)
+    database.add_replies(chat, counts)
     await msg.reply(f"Imported {sum(counts.values())} replies from {len(names)} users")
     
-@app.on_message(filters = fl.group & fl.command("listen"))
+@app.on_message(filters = fl.command("listen"))
 async def start(cli: Client, msg: Message):
     database.active_chat(msg.chat.id)
     await msg.reply("Spotlight is listening to feed the matrix...")
@@ -119,7 +116,7 @@ async def find_bots(cli: Client, ids):
         bots.extend(user.id for user in users if user.is_bot)
     return bots
 
-@app.on_message(filters = fl.group & fl.command("protas"))
+@app.on_message(filters = fl.command("protas"))
 async def get_rank(cli: Client, msg: Message):
     if database.join_chat(msg.chat.id) is None:
         await msg.reply("Run the command /listen first")
